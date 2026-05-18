@@ -58,7 +58,8 @@ Unlike generic lead systems, SimplifIQ includes:
 ✅ Smart company logo detection  
 ✅ AI-generated recommendations  
 ✅ Personalized outreach generation  
-✅ Consulting-style report generation  
+✅ Consulting-style report generation with PDF export  
+✅ Email workflow with SendGrid integration and demo fallback  
 ✅ Premium AI SaaS user experience  
 
 ---
@@ -98,6 +99,10 @@ http://localhost:8000/docs
 ### Live Demo
 
 Coming Soon
+
+### Report Generation & Email
+
+The app generates a personalized PDF report after workflow completion and allows the user to download the report directly from the workflow status page. Email delivery is implemented via SendGrid when API credentials are configured, and the app gracefully falls back to a demo email workflow when SendGrid is not available.
 
 ### Video Walkthrough
 
@@ -165,10 +170,12 @@ AI Agent Layer
 
 External Services
 
- ├── Gemini API
- ├── Tavily Search
- ├── SendGrid
- └── PostgreSQL
+ ├── OpenAI (chat-completions, used by insight / competitor / email agents)
+ ├── Tavily Search (web research + competitor discovery)
+ ├── SendGrid (transactional email, optional)
+ ├── Google Sheets API (optional — leads tracker)
+ ├── Google Drive API (optional — PDF archive)
+ └── PostgreSQL / SQLite
 ```
 
 ---
@@ -325,9 +332,7 @@ Responsible for:
 
 ## AI & Research
 
-- Gemini API
-- LangGraph
-- LangChain
+- OpenAI (chat-completions API, v1 SDK)
 - Tavily Search
 - BeautifulSoup
 
@@ -528,11 +533,16 @@ Add:
 ```env
 DATABASE_URL=your_database_url
 
-GEMINI_API_KEY=your_api_key
+OPENAI_API_KEY=your_api_key
 
 TAVILY_API_KEY=your_api_key
 
-SENDGRID_API_KEY=your_api_key
+SENDGRID_API_KEY=your_api_key   # optional — demo mode if blank
+
+# Optional — Google bonus integrations
+GOOGLE_SERVICE_ACCOUNT_FILE=./credentials/service_account.json
+GOOGLE_SHEETS_SPREADSHEET_ID=
+GOOGLE_DRIVE_FOLDER_ID=
 ```
 
 Run backend:
@@ -567,11 +577,49 @@ http://localhost:5173
 
 ---
 
+# 🎁 Bonus Integrations
+
+These light up automatically when the corresponding env vars are set, and
+no-op safely otherwise — the core workflow runs either way.
+
+### Google Sheets — Live Leads Tracker
+Each submitted lead is appended to a configured sheet with name, email,
+company, timestamp and a status column that is updated as the workflow
+progresses (`processing` → `completed` / `email_failed`).
+
+Env vars:
+```env
+GOOGLE_SERVICE_ACCOUNT_FILE=./credentials/service_account.json
+GOOGLE_SHEETS_SPREADSHEET_ID=<your-sheet-id>
+GOOGLE_SHEETS_SHEET_NAME=Leads
+```
+
+### Google Drive — PDF Archive
+Every generated PDF is uploaded to a Drive folder; the shareable
+`webViewLink` is stored on the `Report.google_drive_url` column and written
+back to the Sheets row for one-click access.
+
+Env vars:
+```env
+GOOGLE_SERVICE_ACCOUNT_FILE=./credentials/service_account.json
+GOOGLE_DRIVE_FOLDER_ID=<your-folder-id>
+```
+
+Setup: create a Google Cloud service account, download the JSON key,
+share the target spreadsheet and Drive folder with the service-account
+email, and point `GOOGLE_SERVICE_ACCOUNT_FILE` at the key.
+
+### PDF Generation — Resilient Rendering
+WeasyPrint is the primary renderer; if its native dependencies
+(Cairo / Pango / GTK) are missing on the host, the service falls back to a
+pure-Python ReportLab build so the workflow always produces a PDF.
+
+---
+
 # 🔮 Future Improvements
 
 - AI voice summaries
 - CRM integrations
-- Google Drive support
 - Live web crawling
 - Multi-tenant architecture
 - Advanced analytics dashboard

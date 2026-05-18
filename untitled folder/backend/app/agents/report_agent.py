@@ -35,14 +35,17 @@ class ReportAgent:
             # Generate HTML report
             html_content = self._generate_html_report(state)
             state.report_html = html_content
-            
+
             state.add_step("report_generated")
             logger.info("Report Agent completed successfully")
-            
+
         except Exception as e:
-            logger.error(f"Report Agent error: {str(e)}")
+            logger.error(f"Report Agent error: {str(e)}", exc_info=True)
             state.add_error("report", str(e))
-        
+            # Don't leave report_html empty — downstream PDF step still needs
+            # something to render (and ReportLab fallback can use state directly).
+            state.report_html = state.report_html or f"<html><body><h1>{state.company_name}</h1></body></html>"
+
         return state
     
     def _generate_html_report(self, state: WorkflowState) -> str:

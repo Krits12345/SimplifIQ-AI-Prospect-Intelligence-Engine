@@ -48,6 +48,8 @@ class DatabaseService:
                 company=state.company_name,
                 industry=state.industry,
                 description=state.company_description,
+                website_content=state.website_content,
+                about_page=state.about_page_content,
                 tech_stack=state.tech_stack,
                 competitors=state.competitors,
                 competitor_data=state.competitor_data,
@@ -72,16 +74,23 @@ class DatabaseService:
     
     @staticmethod
     async def save_report(db: Session, lead_id: int, pdf_path: str) -> Report:
-        """Save report record"""
+        """Save or update report record"""
         try:
-            report = Report(
-                lead_id=lead_id,
-                pdf_path=pdf_path,
-                status="generated"
-            )
-            db.add(report)
+            report = db.query(Report).filter(Report.lead_id == lead_id).first()
+            if report:
+                report.pdf_path = pdf_path
+                report.status = "generated"
+                report.updated_at = datetime.utcnow()
+            else:
+                report = Report(
+                    lead_id=lead_id,
+                    pdf_path=pdf_path,
+                    status="generated"
+                )
+                db.add(report)
+
             db.commit()
-            
+            db.refresh(report)
             logger.info(f"Report saved for lead: {lead_id}")
             return report
         
@@ -90,6 +99,22 @@ class DatabaseService:
             logger.error(f"Failed to save report: {str(e)}")
             raise
     
+    @staticmethod
+    def update_report_fields(db: Session, lead_id: int, **fields) -> bool:
+        """Patch a Report row with the given fields. Returns True on success."""
+        try:
+            report = db.query(Report).filter(Report.lead_id == lead_id).first()
+            if not report:
+                return False
+            for key, value in fields.items():
+                setattr(report, key, value)
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to update report fields for lead {lead_id}: {e}")
+            return False
+
     @staticmethod
     async def log_event(
         db: Session,

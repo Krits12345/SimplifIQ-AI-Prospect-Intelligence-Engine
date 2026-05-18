@@ -1,124 +1,84 @@
 """
-Competitor Agent - Identifies and analyzes competitors
-Responsible for:
-- Finding competitors
-- Comparing positioning
-- Analyzing competitor strengths
+Competitor Agent — finds competitors via Tavily and analyzes top 3 with the LLM.
+
+When OpenAI is unconfigured, competitor names from Tavily are still
+populated but per-competitor analysis is skipped (the data is left empty
+rather than fabricated).
 """
 
 import logging
-from app.utils.research import ResearchService
+
 from app.agents.state import WorkflowState
-import openai
-from app.config import settings
-import json
-import re
+from app.services.llm_service import LLMService
+from app.utils.research import ResearchService
 
 logger = logging.getLogger(__name__)
 
-openai.api_key = settings.openai_api_key
 
+SYSTEM_PROMPT = "You are an expert market analyst."
 
-class CompetitorAgent:
-    """Identifies and analyzes competitors"""
-    
-    def __init__(self):
-        self.research = ResearchService()
-        self.model_name = "gpt-3.5-turbo"
-    
-    async def execute(self, state: WorkflowState) -> WorkflowState:
-        """
-        Find and analyze competitors
-        
-        Args:
-            state: Current workflow state
-            
-        Returns:
-            Updated state with competitor analysis
-        """
-        logger.info(f"Competitor Agent started for: {state.company_name}")
-        
-        try:
-            # Step 1: Search for competitors
-            logger.info("Searching for competitors...")
-            competitors = await self.research.search_competitors(
-                state.company_name,
-                state.industry
-            )
-            state.competitors = competitors
-            
-            if competitors:
-                logger.info(f"Found {len(competitors)} competitors")
-                state.data_sources.append("Competitor Analysis")
-                
-                # Step 2: Analyze each competitor
-                competitor_data = {}
-                for competitor in competitors[:3]:  # Analyze top 3
-                    logger.info(f"Analyzing competitor: {competitor}")
-                    analysis = await self._analyze_competitor(
-                        state.company_name,
-                        competitor,
-                        state.industry
-                    )
-                    competitor_data[competitor] = analysis
-                
-                state.competitor_data = competitor_data
-            
-            state.add_step("competitor_analysis_complete")
-            logger.info("Competitor Agent completed successfully")
-            
-        except Exception as e:
-            logger.error(f"Competitor Agent error: {str(e)}")
-            state.add_error("competitor_analysis", str(e))
-        
-        return state
-    
-    async def _analyze_competitor(
-        self,
-        company: str,
-        competitor: str,
-        industry: str
-    ) -> dict:
-        """
-        Analyze a specific competitor
-        """
-        try:
-            prompt = f"""
-Compare {company} with competitor {competitor} in the {industry or 'tech'} industry.
+PROMPT_TEMPLATE = """\
+Compare {company} with competitor {competitor} in the {industry} industry.
 
-Provide a JSON response:
+Return JSON only:
 {{
     "positioning": "brief positioning",
-    "strengths": ["strength 1", "strength 2"],
-    "weaknesses": ["weakness 1", "weakness 2"],
+    "strengths": ["..."],
+    "weaknesses": ["..."],
     "market_focus": "target market description",
     "competitive_advantage": "key advantage"
 }}
 """
-            
-            response = openai.ChatCompletion.create(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": "You are an expert market analyst."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2,
-                max_tokens=700
+
+
+class CompetitorAgent:
+    def __init__(self):
+        self.research = ResearchService()
+        self.llm = LLMService()
+
+    async def execute(self, state: WorkflowState) -> WorkflowState:
+        logger.info(f"Competitor Agent started for: {state.company_name}")
+        try:
+            competitors = await self.research.search_competitors(
+                state.company_name, state.industry
             )
-            
-            result_text = response.choices[0].message.content
-            
-            json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
-            if json_match:
-                return json.loads(json_match.group())
-            
-            return {
-                "positioning": "",
-                "strengths": [],
-                "weaknesses": [],
-                "market_focus": ""
-            }
-        
+            state.competitors = competitors
+
+            if competitors:
+                logger.info(f"Found {len(competitors)} competitors")
+                state.data_sources.append("Competitor Analysis")
+
+                if self.llm.enabled:
+                    state.competitor_data = {
+                        comp: self._analyze(state.company_name, comp, state.industry)
+                        for comp in competitors[:3]
+                    }
+                else:
+                    state.add_error(
+                        "competitor_analysis",
+                        "LLM unavailable; competitor names only, no analysis",
+                    )
+
+            state.add_step("competitor_analysis_complete")
+            logger.info("Competitor Agent completed successfully")
         except Exception as e:
-            logger.error(f"Failed to analyze competitor {competitor}: {str(e)}")
+            logger.error(f"Competitor Agent error: {e}", exc_info=True)
+            state.add_error("competitor_analysis", str(e))
+        return state
+
+    def _analyze(self, company: str, competitor: str, industry: str) -> dict:
+        try:
+            result = self.llm.chat_json(
+                SYSTEM_PROMPT,
+                PROMPT_TEMPLATE.format(
+                    company=company,
+                    competitor=competitor,
+                    industry=industry or "tech",
+                ),
+                temperature=0.2,
+                max_tokens=700,
+            )
+            return result or {}
+        except Exception as e:
+            logger.error(f"Failed to analyze competitor {competitor}: {e}")
             return {}

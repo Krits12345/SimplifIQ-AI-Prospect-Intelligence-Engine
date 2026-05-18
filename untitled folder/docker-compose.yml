@@ -25,9 +25,12 @@ services:
     container_name: simplif_iq_backend
     environment:
       DATABASE_URL: postgresql://simplif_iq:simplif_iq_password@postgres:5432/simplif_iq
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       TAVILY_API_KEY: ${TAVILY_API_KEY}
       SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      GOOGLE_SERVICE_ACCOUNT_FILE: ${GOOGLE_SERVICE_ACCOUNT_FILE:-}
+      GOOGLE_SHEETS_SPREADSHEET_ID: ${GOOGLE_SHEETS_SPREADSHEET_ID:-}
+      GOOGLE_DRIVE_FOLDER_ID: ${GOOGLE_DRIVE_FOLDER_ID:-}
       ENVIRONMENT: development
     ports:
       - "8000:8000"

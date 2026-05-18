@@ -15,9 +15,11 @@ cp .env.example .env
 
 # 3. Update .env with your API keys
 # Edit backend/.env with:
-# GEMINI_API_KEY=your_key
-# TAVILY_API_KEY=your_key
-# SENDGRID_API_KEY=your_key
+# OPENAI_API_KEY=your_key       # used by the insight / competitor / email agents
+# TAVILY_API_KEY=your_key       # used for web research + competitor discovery
+# SENDGRID_API_KEY=your_key     # optional — demo mode if absent
+# (Optional) GOOGLE_SERVICE_ACCOUNT_FILE + GOOGLE_SHEETS_SPREADSHEET_ID + GOOGLE_DRIVE_FOLDER_ID
+#           for the Sheets logger / Drive PDF archive
 
 # 4. Start everything with Docker Compose
 cd ..
@@ -65,17 +67,28 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for:
 
 ### Required API Keys
 
-1. **Gemini API** (Google AI)
-   - Get at: https://ai.google.dev
-   - Add to `GEMINI_API_KEY`
+1. **OpenAI API** (LLM for insights / competitor analysis / email drafting)
+   - Get at: https://platform.openai.com
+   - Add to `OPENAI_API_KEY`
+   - Without this, agents log a warning and leave AI fields empty
+     (the report endpoint surfaces this honestly instead of fabricating data).
 
 2. **Tavily API** (Web Research)
    - Get at: https://tavily.com
    - Add to `TAVILY_API_KEY`
 
-3. **SendGrid** (Email)
+3. **SendGrid** (Email) — optional
    - Get at: https://sendgrid.com
    - Add to `SENDGRID_API_KEY`
+   - If absent the workflow runs in demo mode (PDF + Sheets + Drive still work).
+
+### Optional — Bonus Google integrations
+
+4. **Google Service Account** (for Sheets logging + Drive PDF archive)
+   - Create at: https://console.cloud.google.com → IAM & Admin → Service Accounts
+   - Download the JSON key and point `GOOGLE_SERVICE_ACCOUNT_FILE` at it
+   - Share the target spreadsheet + Drive folder with the service-account email
+   - Set `GOOGLE_SHEETS_SPREADSHEET_ID` and `GOOGLE_DRIVE_FOLDER_ID`
 
 ### Database Setup
 

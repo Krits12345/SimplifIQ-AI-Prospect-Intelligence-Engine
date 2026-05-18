@@ -23,7 +23,7 @@ export default function LeadSubmissionPage() {
       setSuccess('Lead submitted successfully!')
       setTimeout(() => {
         // pass form data to the status page so UI can render immediately
-        navigate(`/status/${response.data.id}`, { state: { formData } })
+        navigate(`/status/${response.id}`, { state: { formData } })
       }, 1500)
     },
     onError: (error) => {

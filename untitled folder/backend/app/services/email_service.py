@@ -17,7 +17,8 @@ class EmailService:
     """Service for sending emails via SendGrid"""
     
     def __init__(self):
-        self.sg = SendGridAPIClient(settings.sendgrid_api_key)
+        self.sendgrid_key = settings.sendgrid_api_key
+        self.sg = SendGridAPIClient(self.sendgrid_key) if self.sendgrid_key else None
         self.from_email = settings.from_email
     
     async def send_report_email(
@@ -41,6 +42,10 @@ class EmailService:
         Returns:
             True if sent successfully
         """
+        if not self.sg:
+            logger.warning("SendGrid API key not configured, using email demo mode")
+            return False
+
         try:
             # Extract subject and body
             lines = email_content.strip().split('\n')
@@ -60,31 +65,30 @@ class EmailService:
             
             # Attach PDF if provided
             if pdf_path and Path(pdf_path).exists():
-                with open(pdf_path, 'rb') as attachment:
-                    pdf_data = base64.b64encode(attachment.read()).decode()
-                
+                with open(pdf_path, 'rb') as attachment_file:
+                    pdf_data = base64.b64encode(attachment_file.read()).decode()
+
                 pdf_attachment = Attachment(
                     file_content=pdf_data,
                     file_name=Path(pdf_path).name,
                     file_type="application/pdf"
                 )
                 message.attachment = pdf_attachment
-                
                 logger.info(f"PDF attached: {pdf_path}")
             
-            # Send email
             response = self.sg.send(message)
-            
             logger.info(f"Email sent to {to_email}: Status {response.status_code}")
-            
             return response.status_code == 202
-        
         except Exception as e:
             logger.error(f"Failed to send email: {str(e)}")
             return False
     
     async def send_welcome_email(self, to_email: str, to_name: str) -> bool:
         """Send welcome email when lead is captured"""
+        if not self.sg:
+            logger.warning("SendGrid API key not configured, skipping welcome email in demo mode")
+            return False
+
         try:
             message = Mail(
                 from_email=self.from_email,
@@ -108,11 +112,9 @@ Best regards,
 SimplifIQ Team
 """
             )
-            
             response = self.sg.send(message)
             logger.info(f"Welcome email sent to {to_email}")
             return response.status_code == 202
-        
         except Exception as e:
             logger.error(f"Failed to send welcome email: {str(e)}")
             return False

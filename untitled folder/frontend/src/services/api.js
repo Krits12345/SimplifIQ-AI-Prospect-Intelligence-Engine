@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'http://localhost:8000/api'
+// In production set VITE_API_URL on the Vercel project (e.g. https://your-api.onrender.com/api).
+// Locally falls back to the dev backend.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -13,24 +15,23 @@ export const leadService = {
   submitLead: async (leadData) => {
     try {
       const res = await api.post('/leads/submit', leadData)
-      return res
+      return res.data
     } catch (err) {
       // Backend unreachable — return mock id so frontend can proceed
       const mockId = `mock-${Date.now()}`
-      return { data: { id: mockId } }
+      return { id: mockId }
     }
   },
 
   getLeadStatus: async (leadId) => {
     try {
       const res = await api.get(`/leads/status/${leadId}`)
-      return res
+      return res.data
     } catch (err) {
       // If it's a mock id, simulate progressive workflow
       if (typeof leadId === 'string' && leadId.startsWith('mock-')) {
         const start = parseInt(leadId.split('-')[1], 10)
         const elapsed = Math.max(0, Math.floor((Date.now() - start) / 1000))
-        // simulate a 20 second workflow
         const total = 20
         const progress = Math.min(100, Math.floor((elapsed / total) * 100))
 
@@ -51,20 +52,17 @@ export const leadService = {
         const estimated_time_remaining = Math.max(0, total - elapsed)
 
         return {
-          data: {
-            workflow: {
-              progress_percentage: progress,
-              current_step,
-              estimated_time_remaining,
-            },
-            company: 'Mock Company',
-            email: 'demo@example.com',
-            website: '',
+          workflow: {
+            progress_percentage: progress,
+            current_step,
+            estimated_time_remaining,
           },
+          company: 'Mock Company',
+          email: 'demo@example.com',
+          website: '',
         }
       }
 
-      // Propagate error if it's not mock
       throw err
     }
   },
@@ -72,17 +70,15 @@ export const leadService = {
   getLead: async (leadId) => {
     try {
       const res = await api.get(`/leads/${leadId}`)
-      return res
+      return res.data
     } catch (err) {
       if (typeof leadId === 'string' && leadId.startsWith('mock-')) {
         return {
-          data: {
-            id: leadId,
-            name: 'Demo User',
-            email: 'demo@example.com',
-            company: 'Mock Company',
-            website: '',
-          },
+          id: leadId,
+          name: 'Demo User',
+          email: 'demo@example.com',
+          company: 'Mock Company',
+          website: '',
         }
       }
       throw err
@@ -94,20 +90,55 @@ export const reportService = {
   getReport: async (leadId) => {
     try {
       const res = await api.get(`/reports/${leadId}`)
-      return res
+      return res.data
     } catch (err) {
-      // Return mock report when backend not available
       if (typeof leadId === 'string' && leadId.startsWith('mock-')) {
         return {
-          data: {
-            insights: [
-              'AI-generated insight 1',
-              'AI-generated insight 2',
+          lead_id: leadId,
+          company_name: 'Mock Company',
+          website: 'mock.company',
+          industry: 'Consulting',
+          generated_date: new Date().toISOString(),
+          executive_summary: 'This report summarizes core opportunities and website improvements for the company.',
+          company_intelligence: {
+            overview: 'Analyzed public company information, website content and business positioning data.',
+            industry: 'Consulting',
+            target_customers: ['SMBs', 'Startups', 'Enterprises'],
+            strengths: ['Strong brand narrative', 'Clear customer focus'],
+            opportunities: ['Improve SEO metadata', 'Strengthen mobile experience'],
+          },
+          website_audit: {
+            website_score: 82,
+            https_status: true,
+            seo_score: 7,
+            meta_description: false,
+            broken_links: 1,
+            mobile_responsiveness: true,
+          },
+          competitor_intelligence: {
+            competitors: ['Competitor A', 'Competitor B', 'Competitor C'],
+            positioning_notes: ['Competitor A is price-focused.', 'Competitor B is feature-rich.', 'Competitor C is service-led.'],
+            comparison_table: [
+              { feature: 'AI Insights', company: true, competitor_a: true, competitor_b: false },
+              { feature: 'Mobile Responsive', company: true, competitor_a: true, competitor_b: true },
+              { feature: 'Personalized Outreach', company: true, competitor_a: false, competitor_b: true },
             ],
-            sources: 12,
-            generation_time_seconds: 21,
-            insights_count: 24,
-            confidence: 87,
+          },
+          research_confidence: {
+            confidence_score: 85,
+            sources: ['Company website', 'Business directories', 'Competitor profiles', 'Recent news'],
+            limitations: ['No private analytics', 'Public information only'],
+          },
+          strategic_recommendations: [
+            'Refine homepage messaging to highlight differentiation.',
+            'Use clear offers and conversion triggers.',
+            'Develop a priority roadmap for mobile improvements.',
+          ],
+          report_metadata: {
+            sources_analyzed: 4,
+            generation_time_seconds: 24,
+            insights_generated: 12,
+            confidence_score: 85,
           },
         }
       }
@@ -118,12 +149,25 @@ export const reportService = {
   downloadReport: async (leadId) => {
     try {
       const res = await api.get(`/reports/${leadId}/download`, { responseType: 'blob' })
-      return res
+      return res.data
     } catch (err) {
-      // Mock: return a small empty blob so download button still works
       if (typeof leadId === 'string' && leadId.startsWith('mock-')) {
-        const blob = new Blob(['Mock PDF content'], { type: 'application/pdf' })
-        return { data: blob }
+        return new Blob(['Mock PDF content'], { type: 'application/pdf' })
+      }
+      throw err
+    }
+  },
+
+  sendReport: async (leadId) => {
+    try {
+      const res = await api.post(`/reports/${leadId}/send`)
+      return res.data
+    } catch (err) {
+      if (typeof leadId === 'string' && leadId.startsWith('mock-')) {
+        return {
+          status: 'demo',
+          message: 'Report prepared and email workflow completed for demo@example.com'
+        }
       }
       throw err
     }

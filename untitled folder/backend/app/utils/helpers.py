@@ -47,23 +47,39 @@ def truncate_text(text: str, max_length: int = 500) -> str:
     return text[:max_length] + "..."
 
 
+_TECH_KEYWORDS = [
+    # Languages
+    "Python", "JavaScript", "TypeScript", "Go", "Rust", "Java", "Ruby", "PHP",
+    # Frontend frameworks
+    "React", "Vue", "Angular", "Svelte", "Next.js", "Nuxt",
+    # Backend frameworks
+    "Node.js", "FastAPI", "Django", "Flask", "Rails", "Spring", "Express",
+    # Datastores
+    "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "DynamoDB",
+    # Infra / cloud
+    "Docker", "Kubernetes", "AWS", "GCP", "Azure", "Cloudflare", "Vercel",
+    # Concrete capabilities (not the generic "ai" / "api" / "cloud" noise)
+    "GraphQL", "Kafka", "Snowflake", "Terraform", "Stripe", "Twilio",
+    "OpenAI", "TensorFlow", "PyTorch", "LangChain",
+]
+
+
 def extract_technology_keywords(text: str) -> list:
-    """Extract technology keywords from text"""
-    tech_keywords = [
-        "python", "javascript", "react", "vue", "angular", "nodejs",
-        "fastapi", "django", "flask", "postgresql", "mongodb", "redis",
-        "docker", "kubernetes", "aws", "azure", "gcp", "cloud",
-        "machine learning", "ai", "blockchain", "api", "rest", "graphql"
-    ]
-    
-    found_tech = []
-    text_lower = text.lower()
-    
-    for tech in tech_keywords:
-        if tech in text_lower:
-            found_tech.append(tech)
-    
-    return list(set(found_tech))
+    """Find concrete tech names in text using word-boundary matching.
+
+    The previous implementation matched substrings against a list containing
+    generic terms like "ai" and "api", which produced false positives on any
+    page mentioning "main" or "available". This version uses a smaller, more
+    specific list and a regex with word boundaries.
+    """
+    if not text:
+        return []
+    found = set()
+    for keyword in _TECH_KEYWORDS:
+        pattern = r"\b" + re.escape(keyword) + r"\b"
+        if re.search(pattern, text, flags=re.IGNORECASE):
+            found.add(keyword)
+    return sorted(found)
 
 
 def calculate_confidence_score(

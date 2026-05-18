@@ -11,6 +11,7 @@ from app.services.database_service import DatabaseService
 from app.workflows.lead_workflow import LeadWorkflow
 from app.agents.state import WorkflowState
 from app.services.email_service import EmailService
+from app.services.sheets_service import SheetsService
 from app.utils.helpers import validate_email, validate_website
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/api/leads", tags=["leads"])
 
 workflow = LeadWorkflow()
 email_service = EmailService()
+sheets_service = SheetsService()
 
 
 @router.post("/submit", response_model=LeadResponse)
@@ -63,7 +65,13 @@ async def submit_lead(
         
         # Send welcome email
         await email_service.send_welcome_email(lead_data.email, lead_data.name)
-        
+
+        # Bonus: append to Google Sheets leads tracker (no-op if not configured)
+        try:
+            sheets_service.append_lead(lead)
+        except Exception as sheet_err:
+            logger.error(f"Sheets append failed for lead {lead.id}: {sheet_err}")
+
         # Trigger background workflow
         if background_tasks:
             background_tasks.add_task(

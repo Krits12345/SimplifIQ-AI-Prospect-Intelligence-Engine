@@ -1,6 +1,8 @@
 """
-LangGraph Agent States
-Defines state structures for the multi-agent workflow
+Agent state — central data object shared across the sequential pipeline.
+
+The agents themselves are plain async classes orchestrated by LeadWorkflow;
+this module just defines the dataclass each one reads from and mutates.
 """
 
 from typing import Dict, List, Any, Optional

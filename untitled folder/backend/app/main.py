@@ -41,10 +41,15 @@ app = FastAPI(
 )
 
 
-# Configure CORS
+# Configure CORS.
+# - Local dev: any localhost / 127.0.0.1 port (vite hops 5173 → 5174 → 5175…).
+# - Production: any Vercel deploy of this project, including preview URLs
+#   (e.g. https://<project>-<hash>-<team>.vercel.app).
+# If you move to a custom domain, add it here or set ALLOWED_ORIGIN_REGEX
+# explicitly in the Render environment.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Frontend URLs
+    allow_origin_regex=r"(http://(localhost|127\.0\.0\.1)(:\d+)?|https://([a-z0-9-]+\.)*vercel\.app)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

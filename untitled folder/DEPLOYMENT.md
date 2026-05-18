@@ -5,7 +5,7 @@
 ### Pre-Deployment
 - [ ] All environment variables configured
 - [ ] Database migrations completed
-- [ ] API keys verified (Gemini, Tavily, SendGrid)
+- [ ] API keys verified (OpenAI, Tavily, SendGrid)
 - [ ] Frontend build passes without errors
 - [ ] Backend tests passing
 - [ ] .env files not committed to git
@@ -38,11 +38,16 @@ git commit -m "Update gitignore"
 In Render dashboard, add:
 ```
 DATABASE_URL=postgresql://user:password@host:5432/simplif_iq
-GEMINI_API_KEY=sk-...
+OPENAI_API_KEY=sk-...
 TAVILY_API_KEY=tvly-...
 SENDGRID_API_KEY=SG....
 FROM_EMAIL=noreply@simplif-iq.com
 ENVIRONMENT=production
+
+# Optional — Google bonus integrations
+GOOGLE_SERVICE_ACCOUNT_FILE=/etc/secrets/service_account.json
+GOOGLE_SHEETS_SPREADSHEET_ID=...
+GOOGLE_DRIVE_FOLDER_ID=...
 ```
 
 #### Step 4: Deploy
@@ -190,7 +195,7 @@ pg_dump $DATABASE_URL > backup.sql
 - PostgreSQL (Standard): $15/month
 - Vercel (Hobby): $0/month
 - SendGrid (Free tier): $0/month (up to 100 emails)
-- Gemini API: Pay-as-you-go (~$0.50-5/month)
+- OpenAI API: Pay-as-you-go (~$0.50-5/month at light volume on gpt-3.5-turbo)
 - Tavily API: Pay-as-you-go (~$0.50-5/month)
 
 **Total: ~$22-30/month for startup**
